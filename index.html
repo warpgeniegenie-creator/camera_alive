@@ -15,8 +15,6 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:
 #stage{position:absolute;inset:0}
 canvas#view{width:100%;height:100%;display:block}
 video{display:none}
-#guide{position:absolute;left:50%;top:44%;width:min(70vw,70vh,420px);aspect-ratio:1;transform:translate(-50%,-50%);border:3px dashed var(--pop);border-radius:18px;display:none;pointer-events:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
-#guide span{position:absolute;bottom:-34px;left:0;right:0;text-align:center;font-size:15px;color:var(--pop)}
 #top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 #title{font-size:20px;background:var(--glass);padding:6px 14px;border-radius:20px}
 #rec{display:none;background:var(--pop2);padding:6px 14px;border-radius:20px;font-size:16px}
@@ -27,10 +25,17 @@ button,label.btn{font:inherit;color:var(--fg);background:var(--glass);border:2px
 button:active{transform:scale(.95)}
 button:focus-visible,label.btn:focus-visible{outline:3px solid var(--pop);outline-offset:2px}
 button.sel{background:var(--pop);color:var(--ink);border-color:var(--pop)}
-.tp{padding:5px 10px;font-size:15px;min-height:36px;border-radius:14px}
 #actions .act,#flipb{font-size:13px;padding:5px 9px;min-height:32px;gap:4px;border-radius:12px;border-width:1.5px}
 #actions{gap:6px}
 #hide{border-color:var(--pop);font-size:17px;padding:10px 14px;min-height:46px}
+#selpanel{display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:6px}
+#selhint{font-size:17px;background:var(--glass);padding:7px 14px;border-radius:16px;text-align:center}
+#selbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#selbtns button{font-size:14px;padding:7px 11px;min-height:38px;border-radius:13px}
+#s-ok{background:var(--pop);color:var(--ink);border-color:var(--pop);font-size:17px!important;padding:9px 18px!important;min-height:46px!important}
+#s-ok:disabled{opacity:.4}
+body.sel #selpanel{display:flex}
+body.sel #actions,body.sel #main{display:none}
 #seek{display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:10px}
 #hint{font-size:20px;background:var(--glass);padding:8px 16px;border-radius:18px;text-align:center}
 #giveup{background:var(--pop2);border-color:var(--pop2);font-size:19px;padding:12px 22px}
@@ -50,11 +55,6 @@ body.hunt #seek{display:flex}
 #yn{display:flex;gap:12px}
 #yn button{min-width:120px;justify-content:center;font-size:20px;padding:12px 20px}
 #yes{background:var(--pop);color:var(--ink);border-color:var(--pop)}
-#tmodal{position:absolute;inset:0;background:rgba(10,8,6,.78);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;text-align:center}
-#tmodal.on{display:flex}
-#tprev{max-width:40vw;max-height:28vh;object-fit:contain;background:rgba(255,255,255,.92);border-radius:14px;padding:8px}
-#tq{margin:0;font-size:23px}
-#tpick{display:none;gap:8px;flex-wrap:wrap;justify-content:center;max-width:420px}
 #start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;background:var(--bg)}
 #start h1{font-size:34px;margin:0}
 #start p{margin:0;opacity:.8;max-width:320px;line-height:1.5;font-size:17px}
@@ -62,11 +62,13 @@ body.hunt #seek{display:flex}
 </style>
 </head>
 <body>
-<div id="stage"><canvas id="view"></canvas><div id="guide"><span>그림을 네모 안에 맞춰요</span></div></div>
+<div id="stage"><canvas id="view"></canvas></div>
 <video id="cam" playsinline muted autoplay></video>
 <div id="top"><div id="title">그림이 살아났다</div><div id="rec">● 0:00</div></div>
 <div id="toast"></div>
 <div id="bottom">
+  <div id="selpanel"><div id="selhint">살리고 싶은 부분을 손가락으로 둘러싸 보세요 ✏️</div>
+    <div id="selbtns"><button id="s-cancel">✕ 취소</button><button id="s-redo">↺ 다시</button><button id="s-box">▢ 가운데 네모</button><button id="s-bg" class="sel">🧽 배경 지우기 켬</button><button id="s-ok" disabled>✂ 살리기</button></div></div>
   <div id="seek"><div id="hint"></div><button id="giveup">😵 못 찾겠다</button></div>
   <div id="actions">
     <button class="act" data-m="walk">🚶 걷기</button>
@@ -86,8 +88,7 @@ body.hunt #seek{display:flex}
   </div>
 </div>
 <div id="modal"><div id="media"></div><h2 id="q">저장을 하겠습니까?</h2><div id="yn"><button id="yes">예</button><button id="no">아니요</button></div><button id="alt" style="font-size:15px;min-height:38px">저장이 안 돼요? 다른 방법</button></div>
-<div id="tmodal"><img id="tprev" alt=""><h2 id="tq"></h2><div id="tpick"></div></div>
-<div id="start"><h1>✏️ 그림이 살아났다</h1><p>카메라를 켜고, 종이에 그린 그림을 네모 안에 맞춘 뒤 <b>그림 살리기</b>를 누르세요.</p><button id="go">카메라 시작</button><p id="err" style="color:var(--pop2)"></p></div>
+<div id="start"><h1>✏️ 그림이 살아났다</h1><p>카메라를 켜고, <b>그림 살리기</b>를 누르고, 살리고 싶은 그림이나 물건을 손가락으로 둘러싸세요.</p><button id="go">카메라 시작</button><p id="err" style="color:var(--pop2)"></p></div>
 <script>
 const $=s=>document.querySelector(s);
 const cv=$('#view'),ctx=cv.getContext('2d'),cam=$('#cam');
@@ -237,7 +238,7 @@ function drawChar(c,w,h){
   c.restore();
 }
 let last=performance.now();
-function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);drawBase(ctx,W,H);drawChar(ctx,W,H);requestAnimationFrame(loop)}
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);if(sel.on&&sel.snap){ctx.drawImage(sel.snap,0,0);drawLasso()}else{drawBase(ctx,W,H);drawChar(ctx,W,H)}requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
 
 // ===== 버튼 =====
@@ -259,25 +260,24 @@ $('#hide').onclick=async()=>{
   if(!oriBound){addEventListener('deviceorientation',onOri);oriBound=true}
   ch.dir=ch.x>.5?1:-1;ch.mode='hideRun';toast('숨으러 간다! 🙈');
 };
-const tb=$('#tpick');
-Object.entries(TYPES).forEach(([k,T])=>{const b=document.createElement('button');b.className='tp';b.dataset.t=k;b.textContent=T.e+' '+T.n;b.onclick=()=>{setType(k);closeAsk()};tb.appendChild(b)});
 function setType(k){
   ch.type=k;if(ch.mode!=='gone'&&!hunt.on){ch.y=baseY()}
-  document.querySelectorAll('.tp').forEach(b=>b.classList.toggle('sel',b.dataset.t===k));
   ch.pop=1;
 }
 
 // ===== 터치: 캐릭터 끌기 / 숨바꼭질 탐색 =====
 let drag=false,look=null;
 cv.addEventListener('pointerdown',e=>{
+  if(sel.on){sel.drawing=true;sel.pts=[cpt(e)];$('#s-ok').disabled=true;return}
   if(hunt.on){const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*W,py=(e.clientY-r.top)/r.height*H;
     if(hunt.hs&&Math.hypot(px-hunt.hs.x,py-hunt.hs.y)<hunt.hs.r){found();return}
     look={x:e.clientX,y:e.clientY};return}
   if(!sprite||!ch.vis||ch.mode==='flee'||ch.mode==='hideRun')return;drag=true;mv(e)});
 cv.addEventListener('pointermove',e=>{
+  if(sel.on){if(sel.drawing){const q=cpt(e),l=sel.pts[sel.pts.length-1];if(!l||Math.hypot(q.x-l.x,q.y-l.y)>3)sel.pts.push(q)}return}
   if(look){hunt.dy-=(e.clientX-look.x)/innerWidth*HF;hunt.dp+=(e.clientY-look.y)/innerWidth*HF;look={x:e.clientX,y:e.clientY};return}
   if(drag)mv(e)});
-addEventListener('pointerup',()=>{drag=false;look=null});
+addEventListener('pointerup',()=>{drag=false;look=null;if(sel.drawing){sel.drawing=false;if(sel.pts.length>=8)$('#s-ok').disabled=false;else sel.pts=[]}});
 function mv(e){const r=cv.getBoundingClientRect();ch.x=Math.min(.95,Math.max(.05,(e.clientX-r.left)/r.width));ch.y=Math.min(.95,Math.max(.25,(e.clientY-r.top)/r.height+(TYPES[ch.type].fly?0:.08)))}
 
 // ===== 오려내기 (색 기반 + 필요할 때 AI) =====
@@ -287,21 +287,6 @@ function trim(c){
   if(n<w*h*.01)return null;
   const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);
   return{canvas:o,cover:n/(w*h)};
-}
-function cutout(src){
-  const m=Math.min(1,380/Math.max(src.width,src.height)),w=Math.round(src.width*m),h=Math.round(src.height*m);
-  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
-  const id=x.getImageData(0,0,w,h),d=id.data;let r=0,g=0,b=0,n=0,l=0,l2=0;
-  const samp=(i,j)=>{const k=(j*w+i)*4,L=.3*d[k]+.59*d[k+1]+.11*d[k+2];r+=d[k];g+=d[k+1];b+=d[k+2];l+=L;l2+=L*L;n++};
-  for(let i=0;i<w;i++){samp(i,0);samp(i,h-1)}for(let j=0;j<h;j++){samp(0,j);samp(w-1,j)}
-  r/=n;g/=n;b/=n;const std=Math.sqrt(Math.max(0,l2/n-(l/n)**2));
-  const bg=new Uint8Array(w*h),q=[],TH=58;
-  const near=p=>{const k=p*4,dr=d[k]-r,dg=d[k+1]-g,db=d[k+2]-b;return Math.sqrt(dr*dr+dg*dg+db*db)<TH};
-  const push=p=>{if(!bg[p]&&near(p)){bg[p]=1;q.push(p)}};
-  for(let i=0;i<w;i++){push(i);push((h-1)*w+i)}for(let j=0;j<h;j++){push(j*w);push(j*w+w-1)}
-  while(q.length){const p=q.pop(),i=p%w,j=(p/w)|0;if(i>0)push(p-1);if(i<w-1)push(p+1);if(j>0)push(p-w);if(j<h-1)push(p+w)}
-  for(let p=0;p<w*h;p++)if(bg[p])d[p*4+3]=0;
-  x.putImageData(id,0,0);const t=trim(c);return t&&{canvas:t.canvas,cover:t.cover,std};
 }
 let tfP=null,rm=null;
 async function loadTF(){tfP=tfP||import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1');const T=await tfP;T.env.allowLocalModels=false;return T}
@@ -316,8 +301,7 @@ async function aiCut(src){
   const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d',{willReadFrequently:true});
   x.drawImage(src,0,0,c.width,c.height);const id=x.getImageData(0,0,c.width,c.height),d=id.data;
   for(let p=0;p<c.width*c.height;p++)d[p*4+3]=mask.data[p];
-  x.putImageData(id,0,0);const t=trim(c);
-  return t&&t.cover>.03&&t.cover<.92?t.canvas:null;
+  x.putImageData(id,0,0);return c;
 }
 
 // 실루엣을 분석해서 다리·팔(날개)을 찾아요
@@ -355,36 +339,71 @@ function analyze(spr){
   return{legs,arms};
 }
 
-let aiming=false;
-$('#magic').onclick=async()=>{
-  if(!aiming){aiming=true;$('#guide').style.display='block';$('#magic').textContent='✨ 지금 살리기!';toast('그림을 네모 안에 맞추고 한 번 더 눌러요',2800);return}
-  const side=Math.min(innerWidth*.7,innerHeight*.7,420)/innerWidth*W,gx=W/2-side/2,gy=H*.44-side/2;
-  drawBase(ctx,W,H);
-  const t=document.createElement('canvas');t.width=t.height=Math.round(side);t.getContext('2d').drawImage(cv,gx,gy,side,side,0,0,t.width,t.height);
-  aiming=false;$('#guide').style.display='none';$('#magic').textContent='✏️ 그림 살리기';
-  const r=cutout(t);let s=r&&r.canvas;
-  if(!r||r.std>24||r.cover>.6){ // 배경이 균일하지 않거나 잘 안 지워졌을 때만 AI 사용
-    toast('AI가 배경을 지우는 중… (처음엔 모델을 내려받아요)',60000);
-    try{const a=await aiCut(t);if(a)s=a}catch(e){console.warn(e)}
+// ===== 손가락으로 살릴 부분 선택 =====
+const sel={on:false,pts:[],drawing:false,bg:true,snap:null};
+const cpt=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H}};
+function drawLasso(){
+  const P=sel.pts;if(P.length<2)return;
+  ctx.save();
+  if(P.length>2){ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.rect(0,0,W,H);P.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.closePath();ctx.fill('evenodd')}
+  ctx.strokeStyle='#ffcf3f';ctx.lineWidth=Math.max(3,W*.008);ctx.lineJoin='round';ctx.setLineDash([W*.03,W*.02]);
+  ctx.beginPath();P.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));if(!sel.drawing)ctx.closePath();ctx.stroke();ctx.restore();
+}
+function openSel(){
+  const sc=document.createElement('canvas');sc.width=W;sc.height=H;drawBase(sc.getContext('2d'),W,H);
+  Object.assign(sel,{on:true,pts:[],drawing:false,snap:sc});$('#s-ok').disabled=true;document.body.classList.add('sel');
+}
+function closeSel(){sel.on=false;sel.drawing=false;sel.snap=null;document.body.classList.remove('sel')}
+$('#magic').onclick=openSel;
+$('#s-cancel').onclick=closeSel;
+$('#s-redo').onclick=()=>{sel.pts=[];$('#s-ok').disabled=true};
+$('#s-box').onclick=()=>{const k=Math.min(W,H)*.35,cx=W/2,cy=H*.44;sel.pts=[{x:cx-k,y:cy-k},{x:cx+k,y:cy-k},{x:cx+k,y:cy+k},{x:cx-k,y:cy+k}];$('#s-ok').disabled=false};
+$('#s-bg').onclick=()=>{sel.bg=!sel.bg;$('#s-bg').textContent='🧽 배경 지우기 '+(sel.bg?'켬':'끔');$('#s-bg').classList.toggle('sel',sel.bg)};
+
+const scaled=(c,k)=>{const o=document.createElement('canvas');o.width=Math.max(1,Math.round(c.width*k));o.height=Math.max(1,Math.round(c.height*k));o.getContext('2d').drawImage(c,0,0,o.width,o.height);return o};
+function exactCut(t,m){const o=document.createElement('canvas');o.width=t.width;o.height=t.height;const x=o.getContext('2d',{willReadFrequently:true});x.drawImage(t,0,0);x.globalCompositeOperation='destination-in';x.drawImage(m,0,0);const r=trim(o);return r&&r.canvas}
+// 선택한 영역 안에서, 테두리 주변 색(종이 등)과 비슷한 배경만 지워요
+async function bgCut(t,m){
+  const w=t.width,h=t.height,x=t.getContext('2d',{willReadFrequently:true}),id=x.getImageData(0,0,w,h),d=id.data,md=m.getContext('2d').getImageData(0,0,w,h).data;
+  const inn=new Uint8Array(w*h);let area=0;for(let p=0;p<w*h;p++)if(md[p*4+3]>127){inn[p]=1;area++}
+  if(area<100)return null;
+  const rr=4,ring=[],R=[],G=[],B=[],L=[];
+  for(let j=0;j<h;j++)for(let i=0;i<w;i++){const p=j*w+i;if(!inn[p])continue;
+    const e=i<rr||i>=w-rr||j<rr||j>=h-rr||!inn[p-rr]||!inn[p+rr]||!inn[p-rr*w]||!inn[p+rr*w];
+    if(e){ring.push(p);const k=p*4;R.push(d[k]);G.push(d[k+1]);B.push(d[k+2]);L.push(.3*d[k]+.59*d[k+1]+.11*d[k+2])}}
+  if(ring.length<10)return null;
+  const med=a=>a.slice().sort((u,v)=>u-v)[a.length>>1],r0=med(R),g0=med(G),b0=med(B);
+  const lm=L.reduce((u,v)=>u+v,0)/L.length,std=Math.sqrt(L.reduce((u,v)=>u+(v-lm)**2,0)/L.length);
+  const bg=new Uint8Array(w*h),q=[],near=p=>{const k=p*4,a=d[k]-r0,b=d[k+1]-g0,c=d[k+2]-b0;return Math.sqrt(a*a+b*b+c*c)<58};
+  const push=p=>{if(inn[p]&&!bg[p]&&near(p)){bg[p]=1;q.push(p)}};
+  ring.forEach(push);
+  while(q.length){const p=q.pop(),i=p%w,j=(p/w)|0;if(i>0)push(p-1);if(i<w-1)push(p+1);if(j>0)push(p-w);if(j<h-1)push(p+w)}
+  let keep=0;for(let p=0;p<w*h;p++){const a=inn[p]&&!bg[p];d[p*4+3]=a?255:0;if(a)keep++}
+  const out=document.createElement('canvas');out.width=w;out.height=h;out.getContext('2d').putImageData(id,0,0);
+  if(keep<area*.08)return null; // 거의 다 지워지면 선택 그대로 사용
+  if(std>24||keep>area*.9){ // 배경이 복잡하면 AI로 한 번 더
+    try{toast('AI가 배경을 지우는 중… (처음엔 모델을 내려받아요)',60000);
+      const a=await aiCut(t);if(a){const ax=a.getContext('2d',{willReadFrequently:true});ax.globalCompositeOperation='destination-in';ax.drawImage(m,0,0);const tr=trim(a);if(tr&&tr.cover>.03)return tr.canvas}}catch(e){console.warn(e)}
   }
-  if(!s){toast('그림을 찾지 못했어요. 흰 종이에 진하게 그려보세요');return}
+  const tr=trim(out);return tr&&tr.canvas;
+}
+$('#s-ok').onclick=async()=>{
+  const P=sel.pts;if(P.length<3)return;
+  let x0=W,y0=H,x1=0,y1=0;P.forEach(q=>{x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y)});
+  x0=Math.max(0,Math.floor(x0)-2);y0=Math.max(0,Math.floor(y0)-2);x1=Math.min(W,Math.ceil(x1)+2);y1=Math.min(H,Math.ceil(y1)+2);
+  const w=x1-x0,h=y1-y0;if(w<24||h<24){toast('조금 더 크게 둘러싸 주세요');return}
+  let t=document.createElement('canvas');t.width=w;t.height=h;t.getContext('2d').drawImage(sel.snap,x0,y0,w,h,0,0,w,h);
+  let m=document.createElement('canvas');m.width=w;m.height=h;const mc=m.getContext('2d');mc.fillStyle='#fff';mc.beginPath();P.forEach((q,i)=>i?mc.lineTo(q.x-x0,q.y-y0):mc.moveTo(q.x-x0,q.y-y0));mc.closePath();mc.fill();
+  const k=Math.min(1,480/Math.max(w,h));if(k<1){t=scaled(t,k);m=scaled(m,k)}
+  const useBg=sel.bg;closeSel();
+  let s=null;
+  if(useBg){toast('배경 지우는 중…',8000);s=await bgCut(t,m)}
+  if(!s)s=exactCut(t,m);
+  if(!s){toast('선택한 부분을 찾지 못했어요. 다시 둘러싸 주세요');return}
   sprite=s;try{rig=analyze(s)}catch(e){console.warn(e);rig=null}
   Object.assign(ch,{x:.5,s:.34,dir:1,face:1,flip:1,mode:'idle',vx:0,vis:1,pop:1,type:'walker',y:.72});
-  setType('walker');$('#actions').classList.add('on');setMode('idle');
-  toast('그림이 살아났어요! 🎉',2500);
-  askType();
+  setType('walker');$('#actions').classList.add('on');setMode('idle');toast('그림이 살아났어요! 🎉',2500);
 };
-
-// ===== 그림 종류 선택 팝업 =====
-function askType(){
-  if(hunt.on||!sprite)return;
-  $('#tprev').src=sprite.toDataURL();
-  $('#tq').textContent='이 그림은 어떤 그림인가요?';
-  $('#tpick').style.display='flex';
-  document.querySelectorAll('.tp').forEach(b=>b.classList.toggle('sel',b.dataset.t===ch.type));
-  $('#tmodal').classList.add('on');
-}
-function closeAsk(){$('#tmodal').classList.remove('on')}
 
 // ===== 사진 / 동영상 / 저장 =====
 $('#shutter').onclick=()=>{
