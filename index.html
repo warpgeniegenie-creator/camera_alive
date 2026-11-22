@@ -98,7 +98,8 @@ const norm=a=>((a%360)+540)%360-180;
 // ===== 그림 종류별 설정 (fly: 하늘/물속 높이, 없으면 바닥) =====
 const TYPES={
   walker:{n:'사람·로봇',e:'🧍',ws:.12,rs:.34},
-  animal:{n:'동물',e:'🐕',ws:.15,rs:.44},
+  animal:{n:'네발 동물',e:'🐕',ws:.15,rs:.44},
+  hopper:{n:'토끼·개구리',e:'🐇',ws:.14,rs:.34},
   bird:{n:'새',e:'🐦',fly:.45,ws:.16,rs:.42},
   fish:{n:'물고기',e:'🐟',fly:.6,ws:.14,rs:.36},
   car:{n:'탈것',e:'🚗',ws:.22,rs:.52},
@@ -107,8 +108,9 @@ const TYPES={
   plant:{n:'꽃·나무',e:'🌸',ws:0,rs:0}
 };
 const LABELS={
-  walker:['a person','a boy','a girl','a robot','a monster','a princess'],
-  animal:['a cat','a dog','a horse','a lion','a rabbit','a pig','a cow','a bear','a dinosaur','an elephant'],
+  walker:['a person','a boy','a girl','a robot','a monster','a princess','a dinosaur'],
+  animal:['a cat','a dog','a horse','a lion','a pig','a cow','a bear','an elephant','a tiger'],
+  hopper:['a rabbit','a kangaroo','a frog'],
   bird:['a bird','a chicken','a penguin','an owl'],
   fish:['a fish','a whale','a shark','a dolphin'],
   car:['a car','a bus','a train','a truck','a bicycle'],
@@ -116,6 +118,7 @@ const LABELS={
   insect:['a butterfly','a bee','a ladybug','a dragonfly'],
   plant:['a flower','a tree']
 };
+let rig=null;
 const ch={x:.5,y:.72,s:.34,dir:1,face:1,flip:1,mode:'idle',t:0,ph:0,vx:0,sp:0,acc:0,vis:0,jump:0,pop:0,type:'walker'};
 const baseY=()=>TYPES[ch.type].fly||.72;
 
@@ -179,10 +182,10 @@ function update(dt){
   const moving=m==='walk'||m==='run'||m==='flee'||m==='hideRun';
   const tgt=m==='walk'?T.ws:m==='run'?T.rs:m==='flee'?(T.rs||.3)*1.3:m==='hideRun'?.9:0;
   const pv=ch.vx;ch.vx+=((moving?tgt*ch.dir:0)-ch.vx)*Math.min(1,dt*(moving?4:6));
-  ch.acc=(ch.vx-pv)/Math.max(dt,.001);ch.x+=ch.vx*dt;
+  ch.acc=(ch.vx-pv)/Math.max(dt,.001);ch.x+=ch.vx*dt*(ch.type==='hopper'?(.2+1.1*Math.max(0,Math.sin(ch.ph))):1);
   ch.face+=(ch.dir-ch.face)*Math.min(1,dt*9);
   ch.sp=Math.min(1,Math.abs(ch.vx)/.5);
-  const r={walker:6+ch.sp*16,animal:7+ch.sp*14,bird:9+ch.sp*12,fish:4+ch.sp*10,car:10+ch.sp*20,plane:8,insect:16,plant:0}[ch.type];ch.ph+=dt*r;
+  const r={walker:6+ch.sp*16,animal:7+ch.sp*14,hopper:5+ch.sp*5,bird:9+ch.sp*12,fish:4+ch.sp*10,car:10+ch.sp*20,plane:8,insect:16,plant:0}[ch.type];ch.ph+=dt*r;
   if((m==='walk'||m==='run')&&T.ws){if(ch.x>.88)ch.dir=-1;if(ch.x<.12)ch.dir=1}
   if(!moving&&m==='idle'&&T.fly)ch.x+=Math.sin(ch.t*.6)*.03*dt;
   if(m==='flee'){ch.y+=(T.fly?-.16:ch.type==='plant'?.05:-.12)*dt;ch.s*=Math.pow(.6,dt);if(ch.s<.04){ch.vis=0;ch.mode='gone';toast('도망갔어요! “돌아와”를 눌러보세요')}}
@@ -196,6 +199,7 @@ function pose(){
   switch(ch.type){
     case'walker':if(mv){bob=Math.abs(S(p))*(.012+.035*sp);rot=S(p)*.05+.16*sp*dv;sy=1+S(p*2)*.02}break;
     case'animal':if(mv){bob=Math.abs(S(p))*(.01+.03*sp);rot=S(p)*.04*(1+sp)+.06*sp*dv;sx=1+S(p*2)*.04*sp;sy=1}break;
+    case'hopper':{const air=Math.max(0,S(p)),cr=Math.max(0,-S(p))*sp;if(mv){bob=air*(.02+.06*sp);rot=S(p)*.1*sp*dv;sx=1+.08*cr;sy=1-.12*cr}break}
     case'car':bob=S(p*3)*.0025*(mv?1:.3);rot=Math.max(-.08,Math.min(.08,-ch.acc*.04*dv));sy=1;break;
     case'bird':bob=S(p)*.012+S(t*.9)*.03;sy=1+S(p)*.12;sx=1-S(p)*.05;rot=S(t*.9+1)*.05+.12*sp*dv;break;
     case'fish':bob=S(t*.8)*.03;rot=S(p)*.11;sx=1+S(p*2)*.03;sy=1;break;
@@ -206,6 +210,22 @@ function pose(){
   if(m==='jump')bob+=S(ch.jump/.7*Math.PI)*.18;
   return{bob,rot,sx,sy};
 }
+const LEGT=['walker','animal','hopper'],ARMT=['walker','hopper','bird','insect'];
+function limbParts(){
+  if(!rig)return[];
+  const S=Math.sin,ph=ch.ph,A=Math.min(1,ch.sp*2.2),run=ch.mode==='run'||ch.mode==='flee',out=[];
+  if(LEGT.includes(ch.type)&&rig.legs.length){const n=rig.legs.length;
+    rig.legs.forEach((L,i)=>{let a;
+      if(ch.type==='hopper')a=Math.max(0,S(ph))*.7*Math.min(1,ch.sp*3);
+      else{const off=ch.type==='animal'?(n>=4?(i===0||i===3?0:Math.PI):n===3?(i===1?Math.PI:0):(i%2?Math.PI:0)):(i%2?Math.PI:0);a=S(ph+off)*(run?.62:.42)*A}
+      out.push({...L,a})})}
+  if(ARMT.includes(ch.type))rig.arms.forEach(q=>{let a;
+    if(ch.type==='bird'||ch.type==='insect')a=(q.side<0?1:-1)*S(ph)*(ch.type==='bird'?.75:.9);
+    else if(ch.type==='hopper')a=-Math.max(0,S(ph))*.5*Math.min(1,ch.sp*3);
+    else a=-S(ph+(q.side<0?0:Math.PI))*(run?.7:.45)*A;
+    out.push({...q,a})});
+  return out;
+}
 function drawChar(c,w,h){
   if(!sprite)return;
   if(hunt.on){drawHidden(c,w,h);return}
@@ -213,8 +233,19 @@ function drawChar(c,w,h){
   const T=TYPES[ch.type],P=pose(),sw=ch.s*w,sh=sw*sprite.height/sprite.width,px=ch.x*w,py=ch.y*h;
   const pop=1+Math.sin(ch.pop*Math.PI)*.25;
   if(!T.fly){c.save();c.translate(px,py);c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(0,0,sw*.38*(1-P.bob*2),sw*.07,0,0,7);c.fill();c.restore()}
+  const parts=limbParts(),k=sw/sprite.width,ox=-sw/2,oy=T.fly?-sh/2:-sh;
+  if(parts.length&&(ch.type==='bird'||ch.type==='insect')){P.sx=1;P.sy=1}
   c.save();c.translate(px,py-P.bob*h);c.rotate(P.rot);c.scale(ch.face*ch.flip*pop*P.sx,pop*P.sy);
-  if(T.fly)c.drawImage(sprite,-sw/2,-sh/2,sw,sh);else c.drawImage(sprite,-sw/2,-sh,sw,sh);
+  if(!parts.length)c.drawImage(sprite,ox,oy,sw,sh);
+  else{
+    c.save();c.beginPath();c.rect(ox,oy,sw,sh);
+    parts.forEach(q=>c.rect(ox+q.r[0]*k,oy+q.r[1]*k,(q.r[2]-q.r[0])*k,(q.r[3]-q.r[1])*k));
+    c.clip('evenodd');c.drawImage(sprite,ox,oy,sw,sh);c.restore();
+    parts.forEach(q=>{
+      const rx=ox+q.r[0]*k,ry=oy+q.r[1]*k,rw=(q.r[2]-q.r[0])*k,rh=(q.r[3]-q.r[1])*k,px2=ox+q.pv[0]*k,py2=oy+q.pv[1]*k,ov=sh*.02;
+      c.save();c.translate(px2,py2);c.rotate(q.a);c.translate(-px2,-py2);
+      c.beginPath();c.rect(rx,ry-(q.side?0:ov),rw,rh+(q.side?0:ov));c.clip();c.drawImage(sprite,ox,oy,sw,sh);c.restore()});
+  }
   c.restore();
 }
 let last=performance.now();
@@ -313,6 +344,41 @@ async function classify(spr){
   const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];return{type:best[0],conf:best[1]};
 }
 
+// 실루엣을 분석해서 다리·팔(날개)을 찾아요
+function analyze(spr){
+  const gw=80,gh=Math.max(10,Math.round(gw*spr.height/spr.width));
+  const c=document.createElement('canvas');c.width=gw;c.height=gh;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(spr,0,0,gw,gh);
+  const d=x.getImageData(0,0,gw,gh).data,on=(i,j)=>d[(j*gw+i)*4+3]>60;
+  const runs=r=>{const o=[];let s0=-1;for(let i=0;i<=gw;i++){const v=i<gw&&on(i,r);if(v&&s0<0)s0=i;if(!v&&s0>=0){o.push([s0,i-1]);s0=-1}}
+    const m=[];for(const q of o){if(m.length&&q[0]-m[m.length-1][1]<=2)m[m.length-1][1]=q[1];else m.push(q.slice())}return m.filter(q=>q[1]-q[0]>=1)};
+  const R=[];for(let j=0;j<gh;j++)R.push(runs(j));
+  const sx=spr.width/gw,sy=spr.height/gh,legs=[],arms=[];
+  let bot=gh-1;while(bot>0&&!R[bot].length)bot--;
+  const rowS=Math.max(0,Math.round(bot-.1*gh)),base=R[rowS];let hip=-1;
+  if(base.length>=2&&base.length<=4){
+    let r=rowS,miss=0;hip=rowS;
+    while(r>.35*gh){if(R[r].length>=2){hip=r;miss=0}else if(++miss>2)break;r--}
+    if(bot-hip>=.14*gh){const n=base.length;
+      for(let i=0;i<n;i++){const x0=i?Math.round((base[i-1][1]+base[i][0])/2):0,x1=i<n-1?Math.round((base[i][1]+base[i+1][0])/2):gw;
+        legs.push({r:[x0*sx,hip*sy,x1*sx,gh*sy],pv:[(base[i][0]+base[i][1])/2*sx,hip*sy]})}
+    }else hip=-1;
+  }
+  const top=Math.round(.28*gh),bottom=(hip>0?hip:Math.round(.65*gh))-1,rows=[];
+  for(let j=top;j<=bottom;j++){const q=R[j];if(q.length)rows.push({j,x0:q[0][0],x1:q[q.length-1][1]})}
+  if(rows.length>=4){
+    const ws=rows.map(o=>o.x1-o.x0+1).sort((a,b)=>a-b),tw=ws[Math.floor(ws.length*.25)],lim=tw*1.5+2;
+    const ar=rows.filter(o=>o.x1-o.x0+1>lim),core=rows.filter(o=>o.x1-o.x0+1<=lim);
+    if(ar.length>=2&&core.length){
+      const cx=core.reduce((a,o)=>a+(o.x0+o.x1)/2,0)/core.length,tl=cx-tw/2-1,tr=cx+tw/2+1;
+      for(const side of[-1,1]){let n=0,mn=gw,mx=0,y0=gh,y1=0;
+        for(const o of ar)for(const q of R[o.j])for(let i=q[0];i<=q[1];i++){if(side<0?i<tl:i>tr){n++;mn=Math.min(mn,i);mx=Math.max(mx,i);y0=Math.min(y0,o.j);y1=Math.max(y1,o.j)}}
+        if(n>6){const xa=side<0?mn:tr,xb=side<0?tl:mx+1,yb=Math.min(y1+1,bottom+1);
+          arms.push({side,r:[xa*sx,y0*sy,xb*sx,yb*sy],pv:[(side<0?tl:tr)*sx,(y0+(yb-y0)*.3)*sy]})}}
+    }
+  }
+  return{legs,arms};
+}
+
 let aiming=false;
 $('#magic').onclick=async()=>{
   if(!aiming){aiming=true;$('#guide').style.display='block';$('#magic').textContent='✨ 지금 살리기!';toast('그림을 네모 안에 맞추고 한 번 더 눌러요',2800);return}
@@ -326,7 +392,8 @@ $('#magic').onclick=async()=>{
     try{const a=await aiCut(t);if(a)s=a}catch(e){console.warn(e)}
   }
   if(!s){toast('그림을 찾지 못했어요. 흰 종이에 진하게 그려보세요');return}
-  sprite=s;Object.assign(ch,{x:.5,s:.34,dir:1,face:1,flip:1,mode:'idle',vx:0,vis:1,pop:1,type:'walker',y:.72});
+  sprite=s;try{rig=analyze(s)}catch(e){console.warn(e);rig=null}
+  Object.assign(ch,{x:.5,s:.34,dir:1,face:1,flip:1,mode:'idle',vx:0,vis:1,pop:1,type:'walker',y:.72});
   setType('walker');$('#actions').classList.add('on');setMode('idle');
   toast('그림이 살아났어요! 🎉',2500);
   classify(s).then(({type})=>{setType(type);askType(type)}).catch(e=>console.warn(e));
