@@ -54,9 +54,6 @@ body.hunt #seek{display:flex}
 #tmodal.on{display:flex}
 #tprev{max-width:40vw;max-height:28vh;object-fit:contain;background:rgba(255,255,255,.92);border-radius:14px;padding:8px}
 #tq{margin:0;font-size:23px}
-#tyn{display:flex;gap:12px}
-#tyn button{min-width:120px;justify-content:center;font-size:20px;padding:12px 20px}
-#tyes{background:var(--pop);color:var(--ink);border-color:var(--pop)}
 #tpick{display:none;gap:8px;flex-wrap:wrap;justify-content:center;max-width:420px}
 #start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;background:var(--bg)}
 #start h1{font-size:34px;margin:0}
@@ -89,7 +86,7 @@ body.hunt #seek{display:flex}
   </div>
 </div>
 <div id="modal"><div id="media"></div><h2 id="q">저장을 하겠습니까?</h2><div id="yn"><button id="yes">예</button><button id="no">아니요</button></div><button id="alt" style="font-size:15px;min-height:38px">저장이 안 돼요? 다른 방법</button></div>
-<div id="tmodal"><img id="tprev" alt=""><h2 id="tq"></h2><div id="tpick"></div><div id="tyn"><button id="tyes">예</button><button id="tno">아니요</button></div></div>
+<div id="tmodal"><img id="tprev" alt=""><h2 id="tq"></h2><div id="tpick"></div></div>
 <div id="start"><h1>✏️ 그림이 살아났다</h1><p>카메라를 켜고, 종이에 그린 그림을 네모 안에 맞춘 뒤 <b>그림 살리기</b>를 누르세요.</p><button id="go">카메라 시작</button><p id="err" style="color:var(--pop2)"></p></div>
 <script>
 const $=s=>document.querySelector(s);
@@ -108,17 +105,6 @@ const TYPES={
   plane:{n:'비행기·로켓',e:'✈️',fly:.32,ws:.24,rs:.52},
   insect:{n:'곤충',e:'🦋',fly:.5,ws:.12,rs:.3},
   plant:{n:'꽃·나무',e:'🌸',ws:0,rs:0}
-};
-const LABELS={
-  walker:['a person','a boy','a girl','a robot','a monster','a princess','a dinosaur'],
-  animal:['a cat','a dog','a horse','a lion','a pig','a cow','a bear','an elephant','a tiger'],
-  hopper:['a rabbit','a kangaroo','a frog'],
-  bird:['a bird','a chicken','a penguin','an owl'],
-  fish:['a fish','a whale','a shark','a dolphin'],
-  car:['a car','a bus','a train','a truck','a bicycle'],
-  plane:['an airplane','a rocket','a helicopter','a UFO'],
-  insect:['a butterfly','a bee','a ladybug','a dragonfly'],
-  plant:['a flower','a tree']
 };
 let rig=null;
 const ch={x:.5,y:.72,s:.34,dir:1,face:1,flip:1,mode:'idle',t:0,ph:0,vx:0,sp:0,acc:0,vis:0,jump:0,pop:0,type:'walker'};
@@ -317,7 +303,7 @@ function cutout(src){
   for(let p=0;p<w*h;p++)if(bg[p])d[p*4+3]=0;
   x.putImageData(id,0,0);const t=trim(c);return t&&{canvas:t.canvas,cover:t.cover,std};
 }
-let tfP=null,rm=null,clipP=null;
+let tfP=null,rm=null;
 async function loadTF(){tfP=tfP||import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1');const T=await tfP;T.env.allowLocalModels=false;return T}
 async function aiCut(src){
   const T=await loadTF();
@@ -332,18 +318,6 @@ async function aiCut(src){
   for(let p=0;p<c.width*c.height;p++)d[p*4+3]=mask.data[p];
   x.putImageData(id,0,0);const t=trim(c);
   return t&&t.cover>.03&&t.cover<.92?t.canvas:null;
-}
-
-// ===== 그림 종류 인식 (CLIP, 기기 안에서 실행) =====
-async function classify(spr){
-  const T=await loadTF();
-  if(!clipP){clipP=await T.pipeline('zero-shot-image-classification','Xenova/clip-vit-base-patch32')}
-  const c=document.createElement('canvas');c.width=c.height=224;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,224,224);
-  const k=Math.min(200/spr.width,200/spr.height);x.drawImage(spr,112-spr.width*k/2,112-spr.height*k/2,spr.width*k,spr.height*k);
-  const all=[],map={};for(const t in LABELS)for(const l of LABELS[t]){all.push(l);map[l]=t}
-  const out=await clipP(c.toDataURL('image/jpeg',.9),all,{hypothesis_template:"a child's drawing of {}."});
-  const sc={};out.forEach(o=>sc[map[o.label]]=(sc[map[o.label]]||0)+o.score);
-  const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];return{type:best[0],conf:best[1]};
 }
 
 // 실루엣을 분석해서 다리·팔(날개)을 찾아요
@@ -398,21 +372,19 @@ $('#magic').onclick=async()=>{
   Object.assign(ch,{x:.5,s:.34,dir:1,face:1,flip:1,mode:'idle',vx:0,vis:1,pop:1,type:'walker',y:.72});
   setType('walker');$('#actions').classList.add('on');setMode('idle');
   toast('그림이 살아났어요! 🎉',2500);
-  classify(s).then(({type})=>{setType(type);askType(type)}).catch(e=>console.warn(e));
+  askType();
 };
 
-// ===== AI 인식 확인 팝업 =====
-function askType(type){
+// ===== 그림 종류 선택 팝업 =====
+function askType(){
   if(hunt.on||!sprite)return;
   $('#tprev').src=sprite.toDataURL();
-  $('#tq').textContent='이 그림은 ‘'+TYPES[type].e+' '+TYPES[type].n+'’ 맞나요?';
-  $('#tpick').style.display='none';$('#tyn').style.display='flex';
-  document.querySelectorAll('.tp').forEach(b=>b.classList.toggle('sel',b.dataset.t===type));
+  $('#tq').textContent='이 그림은 어떤 그림인가요?';
+  $('#tpick').style.display='flex';
+  document.querySelectorAll('.tp').forEach(b=>b.classList.toggle('sel',b.dataset.t===ch.type));
   $('#tmodal').classList.add('on');
 }
 function closeAsk(){$('#tmodal').classList.remove('on')}
-$('#tyes').onclick=closeAsk;
-$('#tno').onclick=()=>{$('#tq').textContent='그럼 어떤 그림인가요?';$('#tyn').style.display='none';$('#tpick').style.display='flex'};
 
 // ===== 사진 / 동영상 / 저장 =====
 $('#shutter').onclick=()=>{
