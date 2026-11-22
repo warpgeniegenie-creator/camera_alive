@@ -10,8 +10,6 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%E2%9C%8F%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
 :root{--bg:#14110f;--fg:#fff7e6;--ink:#2b2118;--pop:#ffcf3f;--pop2:#ff6b4a;--glass:rgba(20,17,15,.62);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#14110f;--fg:#fff7e6}}
-:root[data-theme="light"],:root[data-theme="dark"]{--bg:#14110f;--fg:#fff7e6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:"Jua","Noto Sans KR",system-ui,sans-serif;overflow:hidden;touch-action:none}
 #stage{position:absolute;inset:0}
@@ -23,12 +21,21 @@ video{display:none}
 #title{font-size:20px;background:var(--glass);padding:6px 14px;border-radius:20px}
 #rec{display:none;background:var(--pop2);padding:6px 14px;border-radius:20px;font-size:16px}
 #bottom{position:absolute;left:0;right:0;bottom:0;padding:10px 10px calc(env(safe-area-inset-bottom,0px) + 12px);background:linear-gradient(transparent,rgba(0,0,0,.65) 35%)}
-#actions{display:none;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+#actions{display:none;gap:8px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
 #actions.on{display:flex}
+#types{display:none;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+#types.on{display:flex}
 button,label.btn{font:inherit;color:var(--fg);background:var(--glass);border:2px solid rgba(255,247,230,.25);border-radius:16px;padding:10px 14px;font-size:17px;cursor:pointer;min-height:46px;display:inline-flex;align-items:center;gap:6px}
 button:active{transform:scale(.95)}
 button:focus-visible,label.btn:focus-visible{outline:3px solid var(--pop);outline-offset:2px}
-button.act.sel{background:var(--pop);color:var(--ink);border-color:var(--pop)}
+button.sel{background:var(--pop);color:var(--ink);border-color:var(--pop)}
+.tp{padding:5px 10px;font-size:15px;min-height:36px;border-radius:14px}
+#hide{border-color:var(--pop)}
+#seek{display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:10px}
+#hint{font-size:20px;background:var(--glass);padding:8px 16px;border-radius:18px;text-align:center}
+#giveup{background:var(--pop2);border-color:var(--pop2);font-size:19px;padding:12px 22px}
+body.hunt #actions,body.hunt #types,body.hunt #magic{display:none}
+body.hunt #seek{display:flex}
 #main{display:flex;gap:10px;justify-content:center;align-items:center}
 #shutter{width:70px;height:70px;border-radius:50%;background:var(--fg);border:5px solid rgba(255,247,230,.4);padding:0;justify-content:center;font-size:26px;color:var(--ink)}
 #record{width:58px;height:58px;border-radius:50%;padding:0;justify-content:center;font-size:24px}
@@ -39,12 +46,10 @@ button.act.sel{background:var(--pop);color:var(--ink);border-color:var(--pop)}
 #modal{position:absolute;inset:0;background:rgba(10,8,6,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}
 #modal.on{display:flex}
 #modal img,#modal video{max-width:100%;max-height:68vh;border-radius:14px;background:#000;display:block}
-#modal p{margin:0;font-size:15px;opacity:.8;text-align:center}
 #q{margin:0;font-size:24px;text-align:center}
 #yn{display:flex;gap:12px}
 #yn button{min-width:120px;justify-content:center;font-size:20px;padding:12px 20px}
 #yes{background:var(--pop);color:var(--ink);border-color:var(--pop)}
-a.btn{color:var(--ink);background:var(--pop);text-decoration:none;border-radius:16px;padding:12px 18px;font-size:17px}
 #start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px;background:var(--bg)}
 #start h1{font-size:34px;margin:0}
 #start p{margin:0;opacity:.8;max-width:320px;line-height:1.5;font-size:17px}
@@ -57,6 +62,8 @@ a.btn{color:var(--ink);background:var(--pop);text-decoration:none;border-radius:
 <div id="top"><div id="title">그림이 살아났다</div><div id="rec">● 0:00</div></div>
 <div id="toast"></div>
 <div id="bottom">
+  <div id="seek"><div id="hint"></div><button id="giveup">😵 못 찾겠다</button></div>
+  <div id="types"></div>
   <div id="actions">
     <button class="act" data-m="walk">🚶 걷기</button>
     <button class="act" data-m="run">🏃 뛰기</button>
@@ -64,6 +71,8 @@ a.btn{color:var(--ink);background:var(--pop);text-decoration:none;border-radius:
     <button class="act" data-m="jump">🦘 점프</button>
     <button class="act" data-m="come">👋 돌아와</button>
     <button class="act" data-m="idle">🧍 멈춤</button>
+    <button id="flipb">↔ 방향</button>
+    <button id="hide">🙈 숨바꼭질</button>
   </div>
   <div id="main">
     <button id="magic">✏️ 그림 살리기</button>
@@ -73,19 +82,41 @@ a.btn{color:var(--ink);background:var(--pop);text-decoration:none;border-radius:
   </div>
 </div>
 <div id="modal"><div id="media"></div><h2 id="q">저장을 하겠습니까?</h2><div id="yn"><button id="yes">예</button><button id="no">아니요</button></div></div>
-<div id="start"><h1>✏️ 그림이 살아났다</h1><p>카메라를 켜고, 종이에 그린 그림을 네모 안에 맞춘 뒤 <b>그림 살리기</b>를 누르세요. 그림이 진짜처럼 화면에 나타나요!</p><button id="go">카메라 시작</button><p id="err" style="color:var(--pop2)"></p></div>
+<div id="start"><h1>✏️ 그림이 살아났다</h1><p>카메라를 켜고, 종이에 그린 그림을 네모 안에 맞춘 뒤 <b>그림 살리기</b>를 누르세요. AI가 그림 종류를 알아보고 알맞게 움직여요!</p><button id="go">카메라 시작</button><p id="err" style="color:var(--pop2)"></p></div>
 <script>
 const $=s=>document.querySelector(s);
 const cv=$('#view'),ctx=cv.getContext('2d'),cam=$('#cam');
 let W=0,H=0,hasCam=false,sprite=null,fallbackImg=null,rec=null,chunks=[],recT=0,recTimer=null;
-const ch={x:.5,y:.72,s:.34,dir:1,mode:'idle',t:0,vis:0,jump:0,goal:null,pop:0};
+const norm=a=>((a%360)+540)%360-180;
 
-function resize(){const d=Math.min(devicePixelRatio||1,2),w=innerWidth,h=innerHeight;W=Math.round(w*Math.min(d,1.5));H=Math.round(h*Math.min(d,1.5));if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}}
+// ===== 그림 종류별 설정 (fly: 하늘/물속 높이, 없으면 바닥) =====
+const TYPES={
+  walker:{n:'사람·로봇',e:'🧍',ws:.12,rs:.34},
+  animal:{n:'동물',e:'🐕',ws:.15,rs:.44},
+  bird:{n:'새',e:'🐦',fly:.45,ws:.16,rs:.42},
+  fish:{n:'물고기',e:'🐟',fly:.6,ws:.14,rs:.36},
+  car:{n:'탈것',e:'🚗',ws:.22,rs:.52},
+  plane:{n:'비행기·로켓',e:'✈️',fly:.32,ws:.24,rs:.52},
+  insect:{n:'곤충',e:'🦋',fly:.5,ws:.12,rs:.3},
+  plant:{n:'꽃·나무',e:'🌸',ws:0,rs:0}
+};
+const LABELS={
+  walker:['a person','a boy','a girl','a robot','a monster','a princess'],
+  animal:['a cat','a dog','a horse','a lion','a rabbit','a pig','a cow','a bear','a dinosaur','an elephant'],
+  bird:['a bird','a chicken','a penguin','an owl'],
+  fish:['a fish','a whale','a shark','a dolphin'],
+  car:['a car','a bus','a train','a truck','a bicycle'],
+  plane:['an airplane','a rocket','a helicopter','a UFO'],
+  insect:['a butterfly','a bee','a ladybug','a dragonfly'],
+  plant:['a flower','a tree']
+};
+const ch={x:.5,y:.72,s:.34,dir:1,face:1,flip:1,mode:'idle',t:0,ph:0,vx:0,sp:0,acc:0,vis:0,jump:0,pop:0,type:'walker'};
+const baseY=()=>TYPES[ch.type].fly||.72;
+
+function resize(){const d=Math.min(devicePixelRatio||1,1.5);W=Math.round(innerWidth*d);H=Math.round(innerHeight*d);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}}
 addEventListener('resize',resize);resize();
+function toast(t,ms=2400){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),ms)}
 
-function toast(t,ms=2200){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),ms)}
-
-// 카메라 (cover로 채움)
 function drawBase(c,w,h){
   c.fillStyle='#2a2320';c.fillRect(0,0,w,h);
   const src=hasCam?cam:fallbackImg;
@@ -94,110 +125,229 @@ function drawBase(c,w,h){
   const k=Math.max(w/sw,h/sh),dw=sw*k,dh=sh*k;c.drawImage(src,(w-dw)/2,(h-dh)/2,dw,dh);
 }
 
-// 캐릭터
+// ===== 숨바꼭질 (폰 방향 센서로 가상 공간에 숨김) =====
+const HF=62;
+const hunt={on:false,yaw:0,pitch:0,dy:0,dp:0,a0:0,b0:0,hs:null,dist:999,hintT:0};
+const ori={a:null,b:null};let oriBound=false;
+const onOri=e=>{if(e.alpha==null)return;ori.a=e.alpha;ori.b=e.beta};
+function view(){
+  const ya=ori.a==null?0:norm(-(ori.a-hunt.a0));
+  const pi=ori.b==null?0:Math.max(-60,Math.min(60,ori.b-hunt.b0));
+  return{yaw:norm(ya+hunt.dy),pitch:pi+hunt.dp};
+}
+function startHunt(){
+  hunt.on=true;hunt.a0=ori.a||0;hunt.b0=ori.b==null?0:ori.b;hunt.dy=hunt.dp=0;hunt.hs=null;
+  hunt.yaw=(Math.random()<.5?-1:1)*(60+Math.random()*110);hunt.pitch=-10+Math.random()*30;
+  ch.vis=0;ch.mode='hidden';ch.vx=0;
+  document.body.classList.add('hunt');
+  $('#hint').textContent='꼭꼭 숨었어요! 폰을 천천히 돌려서 찾아보세요 👀';
+  toast(ori.a==null?'센서가 없어요. 손가락으로 화면을 끌어서 둘러봐요':'숨었어요! 찾아보세요',3000);
+}
+function endHunt(msg){
+  hunt.on=false;hunt.hs=null;document.body.classList.remove('hunt');
+  Object.assign(ch,{x:.5,y:baseY(),s:.34,dir:1,face:1,vx:0,vis:1,pop:1,mode:'idle'});
+  document.querySelectorAll('.act').forEach(b=>b.classList.toggle('sel',b.dataset.m==='idle'));
+  toast(msg,3200);
+}
+function found(){if(navigator.vibrate)navigator.vibrate([60,40,60]);endHunt('찾았다! 🎉 처음 화면으로 돌아왔어요')}
+$('#giveup').onclick=()=>endHunt('짠! 여기 있었어요 😝');
+function drawHidden(c,w,h){
+  if(!sprite)return;const v=view(),ry=norm(hunt.yaw-v.yaw),rp=hunt.pitch-v.pitch,vf=HF*h/w;
+  hunt.dist=Math.hypot(ry,rp);
+  if(Math.abs(ry)<HF/2+6&&Math.abs(rp)<vf/2+6){
+    const x=w*(.5+ry/HF),y=h*(.5-rp/vf),sw=w*.15,sh=sw*sprite.height/sprite.width;
+    c.save();c.translate(x,y);c.rotate(Math.sin(ch.t*3)*.08);c.drawImage(sprite,-sw/2,-sh/2,sw,sh);c.restore();
+    hunt.hs={x,y,r:Math.max(sw,sh)/2+w*.05};
+  }else hunt.hs=null;
+}
+function hintText(){
+  const d=hunt.dist;
+  return d<12?'🔥🔥 바로 앞이에요!':d<28?'🔥 뜨거워요!':d<60?'🌡 따뜻해요':d<100?'🌬 차가워요':'❄️ 아주 차가워요';
+}
+
+// ===== 움직임 =====
 function update(dt){
-  ch.t+=dt;const m=ch.mode;
-  if(ch.pop>0)ch.pop=Math.max(0,ch.pop-dt*2.2);
-  if(m==='walk'||m==='run'){
-    const sp=(m==='run'?.36:.12)*dt;ch.x+=ch.dir*sp;
-    if(ch.x>.88){ch.dir=-1}if(ch.x<.12){ch.dir=1}
-  }else if(m==='flee'){
-    ch.y-=.14*dt;ch.s*=Math.pow(.62,dt);ch.x+=ch.dir*.08*dt;
-    if(ch.s<.04){ch.vis=0;ch.mode='gone';toast('도망갔어요! “돌아와”를 눌러보세요')}
-  }else if(m==='come'){
-    ch.s+=(.34-ch.s)*Math.min(1,dt*3);ch.y+=(.72-ch.y)*Math.min(1,dt*3);
-    if(Math.abs(ch.s-.34)<.01){ch.s=.34;ch.y=.72;ch.mode='idle'}
-  }else if(m==='jump'){
-    ch.jump+=dt;if(ch.jump>.7){ch.jump=0;ch.mode='idle'}
+  ch.t+=dt;if(ch.pop>0)ch.pop=Math.max(0,ch.pop-dt*2.2);
+  if(hunt.on){hunt.hintT-=dt;if(hunt.hintT<=0){hunt.hintT=.3;if(hunt.hs)$('#hint').textContent='👀 어디선가 보여요! 눌러서 잡아요';else $('#hint').textContent=hintText()}return}
+  const T=TYPES[ch.type],m=ch.mode;
+  const moving=m==='walk'||m==='run'||m==='flee'||m==='hideRun';
+  const tgt=m==='walk'?T.ws:m==='run'?T.rs:m==='flee'?(T.rs||.3)*1.3:m==='hideRun'?.9:0;
+  const pv=ch.vx;ch.vx+=((moving?tgt*ch.dir:0)-ch.vx)*Math.min(1,dt*(moving?4:6));
+  ch.acc=(ch.vx-pv)/Math.max(dt,.001);ch.x+=ch.vx*dt;
+  ch.face+=(ch.dir-ch.face)*Math.min(1,dt*9);
+  ch.sp=Math.min(1,Math.abs(ch.vx)/.5);
+  const r={walker:6+ch.sp*16,animal:7+ch.sp*14,bird:9+ch.sp*12,fish:4+ch.sp*10,car:10+ch.sp*20,plane:8,insect:16,plant:0}[ch.type];ch.ph+=dt*r;
+  if((m==='walk'||m==='run')&&T.ws){if(ch.x>.88)ch.dir=-1;if(ch.x<.12)ch.dir=1}
+  if(!moving&&m==='idle'&&T.fly)ch.x+=Math.sin(ch.t*.6)*.03*dt;
+  if(m==='flee'){ch.y+=(T.fly?-.16:ch.type==='plant'?.05:-.12)*dt;ch.s*=Math.pow(.6,dt);if(ch.s<.04){ch.vis=0;ch.mode='gone';toast('도망갔어요! “돌아와”를 눌러보세요')}}
+  else if(m==='hideRun'){if(ch.x>1.2||ch.x<-.2)startHunt()}
+  else if(m==='come'){const by=baseY();ch.s+=(.34-ch.s)*Math.min(1,dt*3);ch.y+=(by-ch.y)*Math.min(1,dt*3);if(Math.abs(ch.s-.34)<.01){ch.s=.34;ch.y=by;ch.mode='idle'}}
+  else if(m==='jump'){ch.jump+=dt;if(ch.jump>.7){ch.jump=0;ch.mode='idle'}}
+}
+function pose(){
+  const t=ch.t,p=ch.ph,sp=ch.sp,m=ch.mode,mv=sp>.05,dv=ch.dir,S=Math.sin;
+  let bob=0,rot=0,sx=1,sy=1+S(t*2.2)*.02;
+  switch(ch.type){
+    case'walker':if(mv){bob=Math.abs(S(p))*(.012+.035*sp);rot=S(p)*.05+.16*sp*dv;sy=1+S(p*2)*.02}break;
+    case'animal':if(mv){bob=Math.abs(S(p))*(.01+.03*sp);rot=S(p)*.04*(1+sp)+.06*sp*dv;sx=1+S(p*2)*.04*sp;sy=1}break;
+    case'car':bob=S(p*3)*.0025*(mv?1:.3);rot=Math.max(-.08,Math.min(.08,-ch.acc*.04*dv));sy=1;break;
+    case'bird':bob=S(p)*.012+S(t*.9)*.03;sy=1+S(p)*.12;sx=1-S(p)*.05;rot=S(t*.9+1)*.05+.12*sp*dv;break;
+    case'fish':bob=S(t*.8)*.03;rot=S(p)*.11;sx=1+S(p*2)*.03;sy=1;break;
+    case'plane':bob=S(t*.7)*.02;rot=S(t*.7+1)*.04+.08*sp*dv;sy=1;break;
+    case'insect':sx=1+S(p)*.18;bob=S(t*1.7)*.04+S(t*3.1)*.015;rot=S(t*2)*.15;sy=1;break;
+    case'plant':rot=S(t*(m==='run'?3.2:1.4))*(m==='run'?.14:m==='walk'?.08:.035);sy=1+S(t*1.8)*.015;break;
   }
+  if(m==='jump')bob+=S(ch.jump/.7*Math.PI)*.18;
+  return{bob,rot,sx,sy};
 }
 function drawChar(c,w,h){
-  if(!sprite||!ch.vis)return;
-  const m=ch.mode,t=ch.t;let bob=0,sway=0,lean=0,sq=1;
-  if(m==='walk'){bob=Math.abs(Math.sin(t*6))*.018;sway=Math.sin(t*6)*.07}
-  else if(m==='run'){bob=Math.abs(Math.sin(t*12))*.05;sway=Math.sin(t*12)*.08;lean=.2*ch.dir}
-  else if(m==='flee'){bob=Math.abs(Math.sin(t*16))*.04;sway=Math.sin(t*16)*.1;lean=.25*ch.dir}
-  else if(m==='jump'){bob=Math.sin(ch.jump/.7*Math.PI)*.18}
-  else{sq=1+Math.sin(t*2.2)*.02}
-  const sw=ch.s*w,sh=sw*sprite.height/sprite.width,px=ch.x*w,py=ch.y*h;
+  if(!sprite)return;
+  if(hunt.on){drawHidden(c,w,h);return}
+  if(!ch.vis)return;
+  const T=TYPES[ch.type],P=pose(),sw=ch.s*w,sh=sw*sprite.height/sprite.width,px=ch.x*w,py=ch.y*h;
   const pop=1+Math.sin(ch.pop*Math.PI)*.25;
-  // 그림자
-  c.save();c.translate(px,py);c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(0,0,sw*.38*(1-bob*2),sw*.07,0,0,7);c.fill();c.restore();
-  c.save();c.translate(px,py-bob*h);c.rotate(sway*.5+lean);c.scale(ch.dir*pop,sq*pop);
-  c.drawImage(sprite,-sw/2,-sh,sw,sh);c.restore();
+  if(!T.fly){c.save();c.translate(px,py);c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(0,0,sw*.38*(1-P.bob*2),sw*.07,0,0,7);c.fill();c.restore()}
+  c.save();c.translate(px,py-P.bob*h);c.rotate(P.rot);c.scale(ch.face*ch.flip*pop*P.sx,pop*P.sy);
+  if(T.fly)c.drawImage(sprite,-sw/2,-sh/2,sw,sh);else c.drawImage(sprite,-sw/2,-sh,sw,sh);
+  c.restore();
 }
-function drawFrame(withChar){drawBase(ctx,W,H);if(withChar)drawChar(ctx,W,H)}
 let last=performance.now();
-function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);drawFrame(true);requestAnimationFrame(loop)}
+function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);drawBase(ctx,W,H);drawChar(ctx,W,H);requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
 
-// 조작 버튼
+// ===== 버튼 =====
 function setMode(m){
+  if(hunt.on)return;
   if(!sprite){toast('먼저 그림을 살려주세요 ✏️');return}
-  if(m==='come'){if(ch.mode==='gone'||ch.s<.3){ch.vis=1;if(ch.mode==='gone'){ch.s=.03;ch.y=.42}ch.mode='come';ch.pop=1}else{ch.mode='idle'}}
+  if(m==='come'){if(ch.mode==='gone'||ch.s<.3){ch.vis=1;if(ch.mode==='gone'){ch.s=.03;ch.y=.42}ch.mode='come';ch.pop=1}else ch.mode='idle'}
   else if(m==='flee'){if(ch.mode==='gone')return;ch.dir=ch.x>.5?1:-1;ch.mode='flee'}
   else if(m==='jump'){if(ch.mode==='gone')return;ch.jump=0;ch.mode='jump'}
-  else{if(ch.mode==='gone'){toast('도망갔어요. “돌아와”를 눌러요');return}ch.mode=m}
+  else{if(ch.mode==='gone'){toast('도망갔어요. “돌아와”를 눌러요');return}
+    if(ch.type==='plant'&&(m==='walk'||m==='run'))toast(m==='walk'?'꽃은 걷지 못해서 살랑살랑 춤춰요 🌸':'바람이 세게 불어요 🌬');
+    ch.mode=m}
   document.querySelectorAll('.act').forEach(b=>b.classList.toggle('sel',b.dataset.m===m));
 }
 document.querySelectorAll('.act').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-// 끌어서 이동
-let drag=false;
-cv.addEventListener('pointerdown',e=>{if(!sprite||!ch.vis||ch.mode==='flee')return;drag=true;mv(e)});
-cv.addEventListener('pointermove',e=>{if(drag)mv(e)});
-addEventListener('pointerup',()=>drag=false);
-function mv(e){const r=cv.getBoundingClientRect();ch.x=Math.min(.95,Math.max(.05,(e.clientX-r.left)/r.width));ch.y=Math.min(.95,Math.max(.3,(e.clientY-r.top)/r.height+.08))}
+$('#flipb').onclick=()=>{ch.flip*=-1};
+$('#hide').onclick=async()=>{
+  if(!sprite||!ch.vis||ch.mode==='gone'){toast('먼저 그림을 살려주세요 ✏️');return}
+  try{if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function')await DeviceOrientationEvent.requestPermission()}catch(e){}
+  if(!oriBound){addEventListener('deviceorientation',onOri);oriBound=true}
+  ch.dir=ch.x>.5?1:-1;ch.mode='hideRun';toast('숨으러 간다! 🙈');
+};
+const tb=$('#types');
+Object.entries(TYPES).forEach(([k,T])=>{const b=document.createElement('button');b.className='tp';b.dataset.t=k;b.textContent=T.e+' '+T.n;b.onclick=()=>setType(k,true);tb.appendChild(b)});
+function setType(k,manual){
+  ch.type=k;if(ch.mode!=='gone'&&!hunt.on){ch.y=baseY()}
+  document.querySelectorAll('.tp').forEach(b=>b.classList.toggle('sel',b.dataset.t===k));
+  if(manual){ch.pop=1;toast(TYPES[k].e+' '+TYPES[k].n+'(으)로 바꿨어요')}
+}
 
-// 그림 오려내기: 가장자리에서 연결된 배경만 투명하게
+// ===== 터치: 캐릭터 끌기 / 숨바꼭질 탐색 =====
+let drag=false,look=null;
+cv.addEventListener('pointerdown',e=>{
+  if(hunt.on){const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*W,py=(e.clientY-r.top)/r.height*H;
+    if(hunt.hs&&Math.hypot(px-hunt.hs.x,py-hunt.hs.y)<hunt.hs.r){found();return}
+    look={x:e.clientX,y:e.clientY};return}
+  if(!sprite||!ch.vis||ch.mode==='flee'||ch.mode==='hideRun')return;drag=true;mv(e)});
+cv.addEventListener('pointermove',e=>{
+  if(look){hunt.dy-=(e.clientX-look.x)/innerWidth*HF;hunt.dp+=(e.clientY-look.y)/innerWidth*HF;look={x:e.clientX,y:e.clientY};return}
+  if(drag)mv(e)});
+addEventListener('pointerup',()=>{drag=false;look=null});
+function mv(e){const r=cv.getBoundingClientRect();ch.x=Math.min(.95,Math.max(.05,(e.clientX-r.left)/r.width));ch.y=Math.min(.95,Math.max(.25,(e.clientY-r.top)/r.height+(TYPES[ch.type].fly?0:.08)))}
+
+// ===== 오려내기 (색 기반 + 필요할 때 AI) =====
+function trim(c){
+  const w=c.width,h=c.height,d=c.getContext('2d').getImageData(0,0,w,h).data;let x0=w,y0=h,x1=-1,y1=-1,n=0;
+  for(let p=0;p<w*h;p++){if(d[p*4+3]>40){n++;const i=p%w,j=(p/w)|0;if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}}
+  if(n<w*h*.01)return null;
+  const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);
+  return{canvas:o,cover:n/(w*h)};
+}
 function cutout(src){
   const m=Math.min(1,380/Math.max(src.width,src.height)),w=Math.round(src.width*m),h=Math.round(src.height*m);
   const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0,w,h);
-  const id=x.getImageData(0,0,w,h),d=id.data;
-  let r=0,g=0,b=0,n=0;
-  const samp=(i,j)=>{const k=(j*w+i)*4;r+=d[k];g+=d[k+1];b+=d[k+2];n++};
+  const id=x.getImageData(0,0,w,h),d=id.data;let r=0,g=0,b=0,n=0,l=0,l2=0;
+  const samp=(i,j)=>{const k=(j*w+i)*4,L=.3*d[k]+.59*d[k+1]+.11*d[k+2];r+=d[k];g+=d[k+1];b+=d[k+2];l+=L;l2+=L*L;n++};
   for(let i=0;i<w;i++){samp(i,0);samp(i,h-1)}for(let j=0;j<h;j++){samp(0,j);samp(w-1,j)}
-  r/=n;g/=n;b/=n;
-  const bg=new Uint8Array(w*h),q=[];const TH=58;
+  r/=n;g/=n;b/=n;const std=Math.sqrt(Math.max(0,l2/n-(l/n)**2));
+  const bg=new Uint8Array(w*h),q=[],TH=58;
   const near=p=>{const k=p*4,dr=d[k]-r,dg=d[k+1]-g,db=d[k+2]-b;return Math.sqrt(dr*dr+dg*dg+db*db)<TH};
   const push=p=>{if(!bg[p]&&near(p)){bg[p]=1;q.push(p)}};
   for(let i=0;i<w;i++){push(i);push((h-1)*w+i)}for(let j=0;j<h;j++){push(j*w);push(j*w+w-1)}
   while(q.length){const p=q.pop(),i=p%w,j=(p/w)|0;if(i>0)push(p-1);if(i<w-1)push(p+1);if(j>0)push(p-w);if(j<h-1)push(p+w)}
-  let x0=w,y0=h,x1=0,y1=0,cnt=0;
-  for(let p=0;p<w*h;p++){if(bg[p])d[p*4+3]=0;else{cnt++;const i=p%w,j=(p/w)|0;if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}}
-  if(cnt<w*h*.01)return null;
-  x.putImageData(id,0,0);
-  const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);
-  return o;
+  for(let p=0;p<w*h;p++)if(bg[p])d[p*4+3]=0;
+  x.putImageData(id,0,0);const t=trim(c);return t&&{canvas:t.canvas,cover:t.cover,std};
 }
+let tfP=null,rm=null,clipP=null;
+async function loadTF(){tfP=tfP||import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1');const T=await tfP;T.env.allowLocalModels=false;return T}
+async function aiCut(src){
+  const T=await loadTF();
+  if(!rm){rm={};
+    rm.model=await T.AutoModel.from_pretrained('briaai/RMBG-1.4',{config:{model_type:'custom'}});
+    rm.proc=await T.AutoProcessor.from_pretrained('briaai/RMBG-1.4',{config:{do_normalize:true,do_pad:false,do_rescale:true,do_resize:true,image_mean:[.5,.5,.5],feature_extractor_type:'ImageFeatureExtractor',image_std:[1,1,1],resample:2,rescale_factor:.00392156862745098,size:{width:1024,height:1024}}})}
+  const img=await T.RawImage.fromURL(src.toDataURL('image/png'));
+  const {pixel_values}=await rm.proc(img);const {output}=await rm.model({input:pixel_values});
+  const mask=await T.RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(img.width,img.height);
+  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(src,0,0,c.width,c.height);const id=x.getImageData(0,0,c.width,c.height),d=id.data;
+  for(let p=0;p<c.width*c.height;p++)d[p*4+3]=mask.data[p];
+  x.putImageData(id,0,0);const t=trim(c);
+  return t&&t.cover>.03&&t.cover<.92?t.canvas:null;
+}
+
+// ===== 그림 종류 인식 (CLIP, 기기 안에서 실행) =====
+async function classify(spr){
+  const T=await loadTF();
+  if(!clipP){toast('인식 AI 불러오는 중… (처음 한 번만, 조금 걸려요)',60000);clipP=await T.pipeline('zero-shot-image-classification','Xenova/clip-vit-base-patch32')}
+  const c=document.createElement('canvas');c.width=c.height=224;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,224,224);
+  const k=Math.min(200/spr.width,200/spr.height);x.drawImage(spr,112-spr.width*k/2,112-spr.height*k/2,spr.width*k,spr.height*k);
+  const all=[],map={};for(const t in LABELS)for(const l of LABELS[t]){all.push(l);map[l]=t}
+  const out=await clipP(c.toDataURL('image/jpeg',.9),all,{hypothesis_template:"a child's drawing of {}."});
+  const sc={};out.forEach(o=>sc[map[o.label]]=(sc[map[o.label]]||0)+o.score);
+  const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];return{type:best[0],conf:best[1]};
+}
+
 let aiming=false;
-$('#magic').onclick=()=>{
+$('#magic').onclick=async()=>{
   if(!aiming){aiming=true;$('#guide').style.display='block';$('#magic').textContent='✨ 지금 살리기!';toast('그림을 네모 안에 맞추고 한 번 더 눌러요',2800);return}
-  const side=Math.min(innerWidth*.7,innerHeight*.7,420)/innerWidth*W;
-  const gx=W/2-side/2,gy=H*.44-side/2;
+  const side=Math.min(innerWidth*.7,innerHeight*.7,420)/innerWidth*W,gx=W/2-side/2,gy=H*.44-side/2;
   drawBase(ctx,W,H);
-  const t=document.createElement('canvas');t.width=t.height=Math.round(side);
-  t.getContext('2d').drawImage(cv,gx,gy,side,side,0,0,t.width,t.height);
+  const t=document.createElement('canvas');t.width=t.height=Math.round(side);t.getContext('2d').drawImage(cv,gx,gy,side,side,0,0,t.width,t.height);
   aiming=false;$('#guide').style.display='none';$('#magic').textContent='✏️ 그림 살리기';
-  const s=cutout(t);
+  const r=cutout(t);let s=r&&r.canvas;
+  if(!r||r.std>24||r.cover>.6){ // 배경이 균일하지 않거나 잘 안 지워졌을 때만 AI 사용
+    toast('AI가 배경을 지우는 중… (처음엔 모델을 내려받아요)',60000);
+    try{const a=await aiCut(t);if(a)s=a}catch(e){console.warn(e)}
+  }
   if(!s){toast('그림을 찾지 못했어요. 흰 종이에 진하게 그려보세요');return}
-  sprite=s;Object.assign(ch,{x:.5,y:.72,s:.34,dir:1,mode:'idle',vis:1,pop:1});
-  $('#actions').classList.add('on');setMode('idle');toast('그림이 살아났어요! 버튼을 눌러보세요 🎉');
+  sprite=s;Object.assign(ch,{x:.5,s:.34,dir:1,face:1,flip:1,mode:'idle',vx:0,vis:1,pop:1,type:'walker',y:.72});
+  setType('walker');$('#actions').classList.add('on');$('#types').classList.add('on');setMode('idle');
+  toast('그림이 살아났어요! AI가 종류를 알아보는 중…',4000);
+  classify(s).then(({type,conf})=>{setType(type);ch.pop=1;toast(`${TYPES[type].e} ${TYPES[type].n}(으)로 인식했어요 (${Math.round(conf*100)}%) · 틀리면 아래에서 바꿔요`,4500)})
+    .catch(e=>{console.warn(e);toast('인식 AI를 못 불러왔어요. 아래에서 종류를 직접 골라요',4000)});
 };
 
-// 사진: 캐릭터 없이 원래 그대로
+// ===== 사진 / 동영상 / 저장 =====
 $('#shutter').onclick=()=>{
   const c=document.createElement('canvas');
   if(hasCam){c.width=cam.videoWidth;c.height=cam.videoHeight;c.getContext('2d').drawImage(cam,0,0)}
   else{c.width=W;c.height=H;drawBase(c.getContext('2d'),W,H)}
   c.toBlob(b=>show(b,'image'),'image/jpeg',.92);
 };
-
-// 동영상: 캐릭터가 함께 찍힘
-$('#record').onclick=()=>{
+let mic=null;
+async function getMic(){
+  if(mic&&mic.getAudioTracks().some(t=>t.readyState==='live'))return mic;
+  try{mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){mic=null}
+  return mic;
+}
+$('#record').onclick=async()=>{
   if(rec){rec.stop();return}
   if(!window.MediaRecorder){toast('이 브라우저는 녹화를 지원하지 않아요');return}
+  const m=await getMic();
   const st=cv.captureStream(30);
-  const types=['video/mp4','video/webm;codecs=vp9','video/webm'];const mt=types.find(t=>MediaRecorder.isTypeSupported(t))||'';
+  if(m)m.getAudioTracks().forEach(t=>st.addTrack(t));else toast('마이크를 쓸 수 없어서 소리 없이 녹화해요',3000);
+  const mt=['video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'';
   try{rec=new MediaRecorder(st,mt?{mimeType:mt}:{})}catch(e){toast('녹화를 시작할 수 없어요');return}
   chunks=[];rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
   rec.onstop=()=>{clearInterval(recTimer);$('#rec').style.display='none';$('#record').classList.remove('on');const b=new Blob(chunks,{type:rec.mimeType||'video/webm'});rec=null;show(b,'video')};
@@ -206,7 +356,7 @@ $('#record').onclick=()=>{
 };
 let pending=null;
 function show(blob,kind){
-  const u=URL.createObjectURL(blob);const m=$('#media');m.innerHTML='';
+  const u=URL.createObjectURL(blob),m=$('#media');m.innerHTML='';
   const e=document.createElement(kind==='image'?'img':'video');e.src=u;
   if(kind==='video'){e.controls=true;e.playsInline=true;e.loop=true;e.autoplay=true;e.muted=true}
   m.appendChild(e);
@@ -215,44 +365,29 @@ function show(blob,kind){
   $('#q').textContent=(kind==='image'?'사진을':'동영상을')+' 저장하시겠습니까?';
   $('#modal').classList.add('on');
 }
-function closeModal(){
-  $('#modal').classList.remove('on');$('#media').innerHTML='';
-  if(pending){const u=pending.url;setTimeout(()=>URL.revokeObjectURL(u),3000);pending=null}
-}
+function closeModal(){$('#modal').classList.remove('on');$('#media').innerHTML='';if(pending){const u=pending.url;setTimeout(()=>URL.revokeObjectURL(u),3000);pending=null}}
 $('#no').onclick=()=>{closeModal();toast('저장하지 않았어요')};
 $('#yes').onclick=async()=>{
   if(!pending)return;const {blob,kind,name}=pending;
   const file=new File([blob],name,{type:blob.type||(kind==='image'?'image/jpeg':'video/webm')});
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   let ok=false;
-  try{
-    if(ios&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file]});ok=true; // 공유 창에서 '이미지 저장' / '비디오 저장'을 고르면 사진첩에 저장돼요
-    }
-  }catch(e){if(e&&e.name==='AbortError'){return}}
-  if(!ok){
-    const a=document.createElement('a');a.href=pending.url;a.download=name;document.body.appendChild(a);a.click();a.remove();ok=true;
-  }
+  try{if(ios&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});ok=true}}catch(e){if(e&&e.name==='AbortError')return}
+  if(!ok){const a=document.createElement('a');a.href=pending.url;a.download=name;document.body.appendChild(a);a.click();a.remove()}
   closeModal();
   toast(ios?'공유 창에서 “'+(kind==='image'?'이미지 저장':'비디오 저장')+'”을 눌러요':'저장했어요! 갤러리나 다운로드 폴더를 확인해요',3500);
 };
 
-// 시작
+// ===== 시작 =====
 async function startCam(){
   try{
     const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
     cam.srcObject=s;await cam.play();hasCam=true;
-  }catch(e){
-    hasCam=false;$('#pick').style.display='inline-flex';
-    $('#err').textContent='';toast('카메라를 못 켰어요. 사진을 불러와서 써보세요',3500);
-  }
+  }catch(e){hasCam=false;$('#pick').style.display='inline-flex';toast('카메라를 못 켰어요. 사진을 불러와서 써보세요',3500)}
   $('#start').style.display='none';
 }
 $('#go').onclick=startCam;
-$('#file').onchange=e=>{
-  const f=e.target.files[0];if(!f)return;
-  const im=new Image();im.onload=()=>{fallbackImg=im;hasCam=false};im.src=URL.createObjectURL(f);
-};
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{fallbackImg=im;hasCam=false};im.src=URL.createObjectURL(f)};
 </script>
 </body>
 </html>
